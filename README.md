@@ -1,8 +1,9 @@
 # SolenoidLab – AI-Based Magnetic Field Visualization & Solenoid Analyzer
 
-EME project (Unit 2 – Q3) by Diksha Sukhadeve, Roll n0: 67, TY ENTC B.
+EME project (Unit 2 – Q3) by Diksha Sukhadeve, Roll no: 67, TY ENTC B.
 
 🔗 **Live demo:** [https://<username>.github.io/solenoid-magnetic-field-analyzer/](https://github.com/diksha-84/solenoid-magnetic-field-analyzer)
+https://solenoid3dmodel.netlify.app/ 
 
 ## What it does
 - Simulates a finite-length solenoid using the Biot–Savart law
