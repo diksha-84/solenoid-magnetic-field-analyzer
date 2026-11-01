@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SolenoidLab – Magnetic Field Visualization & Solenoid Analyzer</title>
+<style>
+:root{
+  --bg:#070b16;--panel:#0e1527;--panel2:#141d36;--line:#24335a;--txt:#e8eeff;--mut:#8fa0c9;
+  --cy:#22d3ee;--vi:#8b5cf6;--am:#fbbf24;--pk:#f472b6;--gr:#34d399;--rd:#fb7185;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);
+  background:
+    radial-gradient(1100px 560px at 8% -10%,rgba(99,102,241,.28),transparent 60%),
+    radial-gradient(900px 500px at 100% 0%,rgba(14,165,233,.22),transparent 60%),
+    var(--bg);
+  min-height:100vh;
+}
+header{padding:22px 28px 10px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.brand h1{margin:0;font-size:26px;letter-spacing:.2px;
+  background:linear-gradient(90deg,var(--cy),var(--vi),var(--pk));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand p{margin:4px 0 0;color:var(--mut);font-size:13.5px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:12px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(20,29,54,.7);color:var(--mut)}
+.badge b{color:var(--txt)}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;gap:16px;padding:10px 28px 18px;align-items:start}
+@media(max-width:1250px){.layout{grid-template-columns:290px minmax(0,1fr)}.right{grid-column:1/-1}}
+@media(max-width:850px){.layout{grid-template-columns:1fr;padding:10px 14px}header{padding:18px 14px 6px}}
+.card{background:linear-gradient(180deg,rgba(20,29,54,.92),rgba(14,21,39,.92));border:1px solid var(--line);border-radius:16px;padding:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card h3{margin:0 0 12px;font-size:14px;letter-spacing:.6px;text-transform:uppercase;color:#b9c6ee;display:flex;align-items:center;gap:8px}
+.card h3 i{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--cy),var(--vi));display:inline-block}
+.stack{display:flex;flex-direction:column;gap:16px}
+.ctrl{margin-bottom:14px}
+.crow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:#cfd9ff}
+.num{display:flex;align-items:center;gap:6px}
+.num input{width:78px;background:#0a1124;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:5px 8px;font:600 13px ui-monospace,Consolas,monospace;text-align:right}
+.num em{font-style:normal;color:var(--mut);font-size:12px;min-width:34px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--cy),var(--vi));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--vi);cursor:pointer;box-shadow:0 0 0 4px rgba(139,92,246,.25)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--vi);cursor:pointer}
+select{width:100%;background:#0a1124;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13px}
+.btn{background:rgba(139,92,246,.16);color:#e5dcff;border:1px solid rgba(139,92,246,.55);border-radius:10px;padding:8px 12px;font-size:12.5px;cursor:pointer;transition:.15s}
+.btn:hover{background:rgba(139,92,246,.35)}
+.btn.on{background:linear-gradient(135deg,var(--cy),var(--vi));color:#05101f;border-color:transparent;font-weight:700}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.lbl{font-size:12px;color:var(--mut);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.tabs .sp{flex:1}
+.stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#050914}
+.stage canvas{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+#probe{position:absolute;left:10px;top:10px;font:12px ui-monospace,Consolas,monospace;background:rgba(5,9,20,.82);border:1px solid var(--line);padding:6px 9px;border-radius:8px;color:#cfe;pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:10px;font-size:12px;color:var(--mut)}
+.ramp{display:inline-block;width:120px;height:8px;border-radius:5px;vertical-align:middle;background:linear-gradient(90deg,#2850ff,#00c8ff,#ffd23c,#ff5050)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:rgba(10,17,36,.8);border:1px solid var(--line);border-radius:14px;padding:12px 14px;position:relative;overflow:hidden}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--cy))}
+.kpi small{color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+.kpi b{display:block;font:700 21px ui-monospace,Consolas,monospace;margin:4px 0 2px}
+.kpi span{font-size:11.5px;color:var(--mut)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+canvas.ch{width:100%;height:270px;display:block}
+.eq{font:13.5px/1.55 "Cambria Math",Cambria,Georgia,serif;background:rgba(10,17,36,.85);border:1px solid var(--line);border-left:3px solid var(--vi);border-radius:10px;padding:9px 11px;margin-bottom:10px;color:#eaf0ff}
+.eq small{display:block;font:11px system-ui;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.eq .sub{color:#a9f5df;font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-word}
+.ok{color:var(--gr)}.warn{color:var(--am)}
+ul.ins{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+ul.ins li{font-size:13px;line-height:1.5;padding:9px 11px;border-radius:10px;background:rgba(10,17,36,.85);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:#b9c6ee;font-size:12px;text-transform:uppercase;letter-spacing:.5px;background:rgba(10,17,36,.6)}
+td.m{font-family:ui-monospace,Consolas,monospace}
+.tablewrap{overflow-x:auto}
+.below{padding:0 28px 26px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1000px){.below{grid-template-columns:1fr;padding:0 14px 20px}}
+footer{padding:6px 28px 28px;color:var(--mut);font-size:12.5px;text-align:center}
+.theory p{font-size:13px;line-height:1.6;color:#cdd8fa;margin:0 0 8px}
+.theory b{color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>SolenoidLab · AI-Based Magnetic Field Visualization &amp; Solenoid Analyzer</h1>
+    <p>EME Project · Unit 2 – Q3 · Finite-length solenoid simulated with Biot–Savart law &amp; verified with Ampère's law</p>
+  </div>
+  <div class="badges">
+    <span class="badge">Law: <b>Biot–Savart</b></span>
+    <span class="badge">Check: <b>Ampère's Law</b></span>
+    <span class="badge">Live <b>2D / 3D</b></span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: CONTROLS -->
+  <aside class="stack">
+    <div class="card">
+      <h3><i></i>Input Parameters</h3>
+      <div id="ctl"></div>
+
+      <div class="lbl">Core material (idealised)</div>
+      <select id="core">
+        <option value="1">Air core (μr = 1)</option>
+        <option value="100">Ferrite core (μr ≈ 100)</option>
+        <option value="200">Soft iron core (μr ≈ 200, effective)</option>
+      </select>
+
+      <div class="lbl">Current direction</div>
+      <div class="btnrow">
+        <button class="btn on" id="dirP">Counter-clockwise</button>
+        <button class="btn" id="dirN">Clockwise</button>
+      </div>
+
+      <div class="lbl">Quick presets</div>
+      <div class="btnrow">
+        <button class="btn" data-p="long">Long solenoid</button>
+        <button class="btn" data-p="short">Short coil</button>
+        <button class="btn" data-p="wide">Wide ring-like</button>
+        <button class="btn" data-p="strong">Strong</button>
+        <button class="btn" data-p="reset">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i></i>Display</h3>
+      <div class="btnrow">
+        <button class="btn on" id="auto">3D auto-rotate</button>
+        <button class="btn on" id="flow">Animate flow</button>
+        <button class="btn" id="heat">2D field heatmap</button>
+      </div>
+      <div class="lbl">Export</div>
+      <div class="btnrow">
+        <button class="btn" id="png3">Save 3D as PNG</button>
+        <button class="btn" id="png2">Save 2D as PNG</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER -->
+  <main class="stack">
+    <div class="card">
+      <h3><i></i>3D Interactive Model · Solenoid &amp; Magnetic Field Lines</h3>
+      <div class="stage">
+        <canvas id="view3d" style="cursor:grab"></canvas>
+      </div>
+      <div class="legend">
+        <span>🖱 Drag to rotate · scroll to zoom</span>
+        <span>Weak <span class="ramp"></span> Strong |B|</span>
+        <span>🟠 Gold wire = coil turns</span>
+        <span>🔵 Cyan moving dots = current I flowing in the wire</span>
+        <span>✨ Moving streaks = magnetic field B flow (blue weak → red strong)</span>
+        <span>Pink arrow = B direction · N = field exits, S = field enters</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i></i>2D Model · Field Lines in Cross-section (through the axis)</h3>
+      <div class="stage">
+        <canvas id="view2d"></canvas>
+        <div id="probe">Hover to probe the field</div>
+      </div>
+      <div class="legend">
+        <span>Weak <span class="ramp"></span> Strong |B|</span>
+        <span>⊙ current out of page &nbsp; ⊗ current into page</span>
+        <span>Cyan dot = centre, pink dot = end</span>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="two">
+      <div class="card"><h3><i></i>Field Strength along the Axis</h3><canvas class="ch" id="ch1"></canvas></div>
+      <div class="card"><h3><i></i>Radial Profile inside the Coil</h3><canvas class="ch" id="ch2"></canvas></div>
+    </div>
+  </main>
+
+  <!-- RIGHT -->
+  <aside class="stack right">
+    <div class="card">
+      <h3><i></i>Formulas (live values)</h3>
+      <div id="formulas"></div>
+    </div>
+    <div class="card">
+      <h3><i></i>Ampère's Law Verification</h3>
+      <div id="ampere"></div>
+    </div>
+    <div class="card">
+      <h3><i></i>AI Analyzer</h3>
+      <ul class="ins" id="insight"></ul>
+    </div>
+  </aside>
+</div>
+
+<section class="below">
+  <div class="card">
+    <h3><i></i>Comparison Table: Centre vs End vs Ideal</h3>
+    <div class="tablewrap"><table id="cmp"></table></div>
+  </div>
+  <div class="card">
+    <h3><i></i>Experiment Log (save snapshots while changing parameters)</h3>
+    <div class="btnrow" style="margin-bottom:10px">
+      <button class="btn" id="snap">+ Save snapshot</button>
+      <button class="btn" id="clr">Clear</button>
+    </div>
+    <div class="tablewrap"><table id="log"></table></div>
+  </div>
+</section>
+
+<section class="below">
+  <div class="card theory" style="grid-column:1/-1">
+    <h3><i></i>Concept in short</h3>
+    <p><b>Biot–Savart law:</b> every small piece of current-carrying wire produces a magnetic field. A solenoid is a stack of N circular loops, so the simulator adds up the field of every loop (exact elliptic-integral expression for a loop) at every point in space.</p>
+    <p><b>Inside a long solenoid</b> the field is almost uniform and equals <b>μ₀nI</b> (n = N/L). At the <b>ends</b> the field drops to about <b>half</b> of the centre value, because only half of the coil lies on one side of the end point. Outside, the field is weak and the lines close back from the N-pole to the S-pole.</p>
+    <p><b>Right-hand rule:</b> curl the fingers of your right hand along the current; the thumb points along B inside the coil (towards the N end). Increase I or N, or reduce L, to get a stronger field. A magnetic core multiplies the field by (about) μr.</p>
+  </div>
+</section>
+
+<footer>Built with AI assistance (Claude) for the EME course · Physics engine: numerical Biot–Savart summation of N current loops · The “AI Analyzer” panel is a rule-based expert system that interprets the simulation results.</footer>
+
+<script>
+(()=>{
+"use strict";
+const MU0 = 4e-7*Math.PI;
+const DEF = {I:5,N:200,L:20,R:3,mu:1,dir:1};
+const S = Object.assign({},DEF);
+let view='2d', showHeat=false, loops=null, lines=[], heatImg=null;
+const cam={yaw:-1.1,pitch:0.42,zoom:1,auto:true};
+let tAnim=0,flowOn=true,lastT=0;
+let snaps=[];
+
+/* ---------------- helpers ---------------- */
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+function fmtB(B){const a=Math.abs(B);
+  if(a>=1)return (B).toFixed(3)+" T";
+  if(a>=1e-3)return (B*1e3).toFixed(3)+" mT";
+  return (B*1e6).toFixed(2)+" µT";}
+function pickUnit(B){const a=Math.abs(B); if(a>=1)return {u:"T",f:1}; if(a>=1e-3)return {u:"mT",f:1e3}; return {u:"µT",f:1e6};}
+function fnum(v,d=3){return Number(v).toPrecision(d);}
+const RAMP=[[0,[40,80,255]],[.4,[0,200,255]],[.7,[255,210,60]],[1,[255,80,80]]];
+const MAG=[[0,[4,5,18]],[.3,[70,18,105]],[.6,[190,55,95]],[.85,[250,150,50]],[1,[255,242,170]]];
+function ramp(stops,t){t=clamp(t,0,1);for(let i=1;i<stops.length;i++){if(t<=stops[i][0]){const a=stops[i-1],b=stops[i],u=(t-a[0])/(b[0]-a[0]);
+  return [a[1][0]+(b[1][0]-a[1][0])*u,a[1][1]+(b[1][1]-a[1][1])*u,a[1][2]+(b[1][2]-a[1][2])*u];}}return stops[stops.length-1][1];}
+function tOf(B,Bref){const lo=Math.log10(Bref*0.02),hi=Math.log10(Bref*1.4);return (Math.log10(Math.max(B,1e-30))-lo)/(hi-lo);}
+
+/* ---------------- physics ---------------- */
+function ellipKE(m){
+  m=Math.min(m,1-1e-13);
+  let a=1,b=Math.sqrt(1-m),sum=0.5*m,p=0.5;
+  for(let i=0;i<14;i++){
+    const an=(a+b)/2,cn=(a-b)/2; b=Math.sqrt(a*b); a=an; p*=2; sum+=p*cn*cn;
+    if(Math.abs(cn)<1e-13)break;
+  }
+  const K=Math.PI/(2*a);
+  return [K,K*(1-sum)];
+}
+// field of ONE circular loop (radius a, current I) at cylindrical point (rho,z) -> [Brho,Bz]
+function loopField(rho,z,a,I){
+  const a2=a*a,r2=rho*rho,z2=z*z;
+  if(rho<1e-6){return [0,MU0*I*a2/(2*Math.pow(a2+z2,1.5))];}
+  let al2=a2+r2+z2-2*a*rho; const be2=a2+r2+z2+2*a*rho;
+  const minAl=1e-6*a2; if(al2<minAl)al2=minAl;
+  const be=Math.sqrt(be2);
+  let m=1-al2/be2; if(m<0)m=0;
+  const KE=ellipKE(m),K=KE[0],E=KE[1];
+  const C=MU0*I/Math.PI;
+  const Bz=C/(2*al2*be)*((a2-r2-z2)*E+al2*K);
+  const Br=C*z/(2*al2*be*rho)*((a2+r2+z2)*E-al2*K);
+  return [Br,Bz];
+}
+function buildLoops(M){
+  const L=S.L/100; M=Math.max(1,Math.min(S.N,M));
+  const z=new Float64Array(M); for(let j=0;j<M;j++)z[j]=-L/2+(j+0.5)*L/M;
+  return {z,I:S.dir*S.I*S.N/M,M};
+}
+// total field of solenoid (sum of loops) -> [Brho,Bz]
+function solB(rho,z,lp){
+  const R=S.R/100; let br=0,bz=0;
+  for(let j=0;j<lp.M;j++){const f=loopField(rho,z-lp.z[j],R,lp.I);br+=f[0];bz+=f[1];}
+  return [br*S.mu,bz*S.mu];
+}
+// exact on-axis formula for finite solenoid (analytic)
+function axisB(z){
+  const L=S.L/100,R=S.R/100,n=S.N/L,zp=z+L/2,zm=z-L/2;
+  return S.dir*S.mu*MU0*n*S.I/2*(zp/Math.sqrt(zp*zp+R*R)-zm/Math.sqrt(zm*zm+R*R));
+}
+function geo(){const L=S.L/100,R=S.R/100;const Zh=L/2+Math.max(0.6*L,4*R);return {L,R,Zh,Rh:Zh/1.6};}
+function results(){
+  const {L,R}=geo(),n=S.N/L;
+  const Bc=Math.abs(axisB(0)),Be=Math.abs(axisB(L/2)),Bid=S.mu*MU0*n*S.I;
+  const Lind=S.mu*MU0*S.N*S.N*Math.PI*R*R/L;
+  return {L,R,n,Bc,Be,Bid,Lind,U:0.5*Lind*S.I*S.I,LD:L/(2*R)};
+}
+
+/* ---------------- field-line tracing ---------------- */
+function trace(r0,z0,sign,ds,g){
+  const pts=[[z0,r0,0]];let r=r0,z=z0,closed=false;
+  const f=(rr,zz)=>{const b=solB(rr,zz,loops);const m=Math.hypot(b[0],b[1])||1e-30;return [b[1]/m*sign,b[0]/m*sign,m];};
+  for(let i=0;i<1800;i++){
+    const a=f(r,z);
+    const rm=Math.max(0,r+a[1]*ds/2),zm=z+a[0]*ds/2;
+    const b=f(rm,zm);
+    z+=b[0]*ds;r=Math.abs(r+b[1]*ds);
+    pts.push([z,r,a[2]]);
+    if(Math.abs(z)>g.Zh*0.985||r>g.Rh*0.985)break;
+    if(i>30&&Math.hypot(z-z0,r-r0)<1.6*ds){closed=true;break;}
+  }
+  return {pts,closed};
+}
+function computeLines(){
+  const g=geo();
+  const ds=Math.min(g.Zh/110,Math.max(g.R/8,g.Zh/400));
+  const inn=[0,.14,.28,.42,.56,.70,.82,.92].map(f=>f*g.R);
+  const out=[1.15,1.4,1.8,2.4,3.2,4.5].map(f=>f*g.R).filter(r=>r<g.Rh*0.92);
+  lines=[];
+  inn.concat(out).forEach((r0,idx)=>{
+    const fw=trace(r0,0,1,ds,g);
+    let pts=fw.pts;
+    if(!fw.closed){const bw=trace(r0,0,-1,ds,g).pts.slice(1).reverse();pts=bw.concat(fw.pts);}
+    let mean=0;pts.forEach(p=>mean+=p[2]);mean/=pts.length;
+    lines.push({pts,mean,seed:r0});
+  });
+}
+function computeHeat(){
+  if(!showHeat){heatImg=null;return;}
+  const g=geo(),cols=110,rows=68,half=rows/2,Bref=results().Bc||1e-9;
+  const off=document.createElement("canvas");off.width=cols;off.height=rows;
+  const c=off.getContext("2d"),img=c.createImageData(cols,rows);
+  for(let j=0;j<half;j++){
+    const rho=((half-j)-0.5)/half*g.Rh;
+    for(let i=0;i<cols;i++){
+      const z=-g.Zh+(i+0.5)*2*g.Zh/cols,b=solB(rho,z,loops),m=Math.hypot(b[0],b[1]);
+      const col=ramp(MAG,tOf(m,Bref));
+      for(const row of [j,rows-1-j]){const k=(row*cols+i)*4;img.data[k]=col[0];img.data[k+1]=col[1];img.data[k+2]=col[2];img.data[k+3]=255;}
+    }
+  }
+  c.putImageData(img,0,0);heatImg=off;
+}
+
+/* ---------------- canvas helpers ---------------- */
+const cv2=$("view2d"),ctx2=cv2.getContext("2d"),cv3=$("view3d"),ctx3=cv3.getContext("2d");
+let cv=cv2,ctx=ctx2;
+function ensure(){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {W:w,H:h};
+}
+function pill(c,x,y,text,col,align="center"){
+  c.font="600 11.5px ui-monospace,Consolas,monospace";
+  const w=c.measureText(text).width+12;
+  const x0=align==="center"?x-w/2:x;
+  c.fillStyle="rgba(5,9,20,.82)";c.strokeStyle=col;c.lineWidth=1;
+  c.beginPath();c.roundRect?c.roundRect(x0,y-10,w,20,6):c.rect(x0,y-10,w,20);c.fill();c.stroke();
+  c.fillStyle="#fff";c.textAlign="left";c.textBaseline="middle";c.fillText(text,x0+6,y+.5);
+}
+function arrow(c,x,y,dx,dy,size,col){
+  const m=Math.hypot(dx,dy)||1;dx/=m;dy/=m;
+  c.fillStyle=col;c.beginPath();
+  c.moveTo(x+dx*size,y+dy*size);
+  c.lineTo(x-dx*size*0.7-dy*size*0.6,y-dy*size*0.7+dx*size*0.6);
+  c.lineTo(x-dx*size*0.7+dy*size*0.6,y-dy*size*0.7-dx*size*0.6);
+  c.closePath();c.fill();
+}
+
+/* ---------------- 2D render ---------------- */
+function render2D(){
+  cv=cv2;ctx=ctx2;
+  const {W,H}=ensure(),g=geo(),sc=W/(2*g.Zh),R=results();
+  const X=z=>W/2+z*sc,Y=r=>H/2-r*sc;
+  ctx.fillStyle="#050914";ctx.fillRect(0,0,W,H);
+  if(heatImg){ctx.imageSmoothingEnabled=true;ctx.globalAlpha=.85;ctx.drawImage(heatImg,0,0,W,H);ctx.globalAlpha=1;}
+  // axis
+  ctx.strokeStyle="rgba(150,170,220,.25)";ctx.setLineDash([6,6]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,Y(0));ctx.lineTo(W,Y(0));ctx.stroke();ctx.setLineDash([]);
+  // coil body
+  ctx.fillStyle="rgba(251,191,36,.07)";ctx.fillRect(X(-g.L/2),Y(g.R),g.L*sc,2*g.R*sc);
+  ctx.strokeStyle="rgba(251,191,36,.45)";ctx.setLineDash([4,4]);ctx.strokeRect(X(-g.L/2),Y(g.R),g.L*sc,2*g.R*sc);ctx.setLineDash([]);
+  // field lines
+  const whiteMode=!!heatImg;
+  lines.forEach(line=>{
+    const p=line.pts;
+    for(const sgn of (line.seed===0?[1]:[1,-1])){
+      ctx.lineWidth=1.6;ctx.lineCap="round";
+      for(let i=0;i<p.length-1;i+=5){
+        const j=Math.min(i+5,p.length-1);
+        const col=whiteMode?[255,255,255]:ramp(RAMP,tOf(p[i][2],R.Bc));
+        ctx.strokeStyle=`rgba(${col[0]|0},${col[1]|0},${col[2]|0},${whiteMode?.8:.95})`;
+        ctx.beginPath();ctx.moveTo(X(p[i][0]),Y(sgn*p[i][1]));
+        for(let k=i+1;k<=j;k++)ctx.lineTo(X(p[k][0]),Y(sgn*p[k][1]));
+        ctx.stroke();
+      }
+      // arrows
+      const n=p.length;
+      for(const fr of [.22,.5,.78]){
+        const i=Math.floor(n*fr);if(i<1||i>=n-1)continue;
+        const dz=p[i+1][0]-p[i-1][0],dr=(p[i+1][1]-p[i-1][1])*sgn;
+        const col=whiteMode?[255,255,255]:ramp(RAMP,tOf(p[i][2],R.Bc));
+        arrow(ctx,X(p[i][0]),Y(sgn*p[i][1]),dz,-dr,6,`rgb(${col[0]|0},${col[1]|0},${col[2]|0})`);
+      }
+    }
+  });
+  // turns
+  const Mv=Math.min(S.N,40);
+  for(let j=0;j<Mv;j++){
+    const z=-g.L/2+(j+.5)*g.L/Mv;
+    for(const top of [1,-1]){
+      const out=(top*S.dir)>0;
+      const x=X(z),y=Y(top*g.R),rad=Math.max(3,Math.min(6,sc*g.L/Mv*0.45));
+      ctx.fillStyle="#fbbf24";ctx.beginPath();ctx.arc(x,y,rad,0,7);ctx.fill();
+      ctx.strokeStyle="#241800";ctx.lineWidth=1.3;ctx.beginPath();
+      if(out){ctx.arc(x,y,1.3,0,7);ctx.stroke();}
+      else{ctx.moveTo(x-rad*.55,y-rad*.55);ctx.lineTo(x+rad*.55,y+rad*.55);ctx.moveTo(x+rad*.55,y-rad*.55);ctx.lineTo(x-rad*.55,y+rad*.55);ctx.stroke();}
+    }
+  }
+  // N / S poles
+  const nEnd=S.dir>0?1:-1;
+  for(const e of [1,-1]){
+    const isN=e===nEnd,x=X(e*(g.L/2+g.Zh*0.07));
+    ctx.fillStyle=isN?"#ef4444":"#3b82f6";ctx.beginPath();ctx.arc(x,Y(0),11,0,7);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="700 12px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(isN?"N":"S",x,Y(0)+.5);
+  }
+  // markers
+  const mk=[[0,"Centre",fmtB(R.Bc),"#22d3ee"],[g.L/2,"End",fmtB(R.Be),"#f472b6"]];
+  mk.forEach(m=>{
+    ctx.strokeStyle=m[3];ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(m[0]),Y(0),6,0,7);ctx.stroke();
+    ctx.fillStyle=m[3];ctx.beginPath();ctx.arc(X(m[0]),Y(0),2.2,0,7);ctx.fill();
+  });
+  pill(ctx,X(0),Y(0)-24,`Centre  ${fmtB(R.Bc)}`,"#22d3ee");
+  pill(ctx,X(g.L/2),Y(0)+24,`End  ${fmtB(R.Be)}`,"#f472b6");
+  // dimension L
+  const yL=Y(-g.R)+22;
+  ctx.strokeStyle="rgba(200,215,255,.6)";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(X(-g.L/2),yL);ctx.lineTo(X(g.L/2),yL);
+  ctx.moveTo(X(-g.L/2),yL-5);ctx.lineTo(X(-g.L/2),yL+5);ctx.moveTo(X(g.L/2),yL-5);ctx.lineTo(X(g.L/2),yL+5);ctx.stroke();
+  pill(ctx,X(0),yL+14,`L = ${S.L} cm`,"rgba(200,215,255,.5)");
+  // radius
+  ctx.strokeStyle="rgba(251,191,36,.7)";ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(X(-g.L/2*0.8),Y(0));ctx.lineTo(X(-g.L/2*0.8),Y(g.R));ctx.stroke();ctx.setLineDash([]);
+  pill(ctx,X(-g.L/2*0.8)+4,Y(g.R/2),`R = ${S.R} cm`,"rgba(251,191,36,.5)","left");
+}
+
+/* ---------------- 3D render ---------------- */
+function render3D(){
+  cv=cv3;ctx=ctx3;
+  const {W,H}=ensure(),g=geo();
+  const bgd=ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,Math.max(W,H)*0.7);
+  bgd.addColorStop(0,"#101a3c");bgd.addColorStop(1,"#02040c");
+  ctx.globalCompositeOperation="source-over";
+  ctx.fillStyle=bgd;ctx.fillRect(0,0,W,H);
+  const sc=W/(2*g.Zh)*0.9*cam.zoom,cx=W/2,cy=H/2,D=4*g.Zh,T=tAnim;
+  const cyw=Math.cos(cam.yaw),syw=Math.sin(cam.yaw),cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);
+  // right-handed view: +z axis of the coil points to the right at start
+  const P=(x,y,z)=>{
+    const x1=x*cyw+z*syw,z1=-x*syw+z*cyw;
+    const y2=y*cp-z1*sp,z2=y*sp+z1*cp;
+    const f=D/(D+z2);
+    return [cx-x1*f*sc,cy-y2*f*sc,z2];
+  };
+  const R=results(),items=[];
+
+  /* ---- 1. coil wire (helix) ---- */
+  const turns=Math.min(S.N,40),PT=24,NP=turns*PT,hel=[];
+  for(let k=0;k<=NP;k++){const u=k/NP,phi=2*Math.PI*turns*u;hel.push(P(g.R*Math.cos(phi),g.R*Math.sin(phi),-g.L/2+u*g.L));}
+  for(let k=0;k<NP;k+=12){
+    const seg=hel.slice(k,Math.min(k+12,NP)+1);let d=0;seg.forEach(q=>d+=q[2]);
+    items.push({pts:seg,depth:d/seg.length,col:[255,165,40],w:2.2,wire:true});
+  }
+  /* optional magnetic core */
+  if(S.mu>1){
+    for(let a=0;a<6;a++){
+      const ph=a*Math.PI/3,r=g.R*0.8,p1=P(r*Math.cos(ph),r*Math.sin(ph),-g.L/2),p2=P(r*Math.cos(ph),r*Math.sin(ph),g.L/2);
+      items.push({pts:[p1,p2],depth:(p1[2]+p2[2])/2,col:[150,175,215],w:2,wire:true});
+    }
+  }
+  /* ---- 2. current flow : moving cyan charges along the wire ---- */
+  const nd=Math.min(turns*2,60),spd=0.03+0.17*S.I/20;
+  for(let i=0;i<nd;i++){
+    let u=(i/nd+S.dir*T*spd)%1;if(u<0)u+=1;
+    const pos=u*NP,i0=Math.min(NP-1,Math.floor(pos)),fr=pos-i0,a=hel[i0],b=hel[i0+1];
+    items.push({dot:true,x:a[0]+(b[0]-a[0])*fr,y:a[1]+(b[1]-a[1])*fr,depth:a[2]+(b[2]-a[2])*fr,r:2.4,col:[110,240,255]});
+  }
+  /* ---- 3. magnetic field lines (colour = strength) + flowing streaks ---- */
+  const K=6,CH=12;
+  lines.forEach((line,li)=>{
+    if(li<8&&li%2===1&&li!==7)return;
+    const sub=[];for(let i=0;i<line.pts.length;i+=2)sub.push(line.pts[i]);
+    const nS=sub.length;if(nS<3)return;
+    const cols=[];
+    for(let c0=0;c0<nS-1;c0+=CH){const p=sub[Math.min(c0+(CH>>1),nS-1)];cols.push(ramp(RAMP,tOf(p[2],R.Bc)).map(v=>v|0).join(","));}
+    const azs=line.seed===0?[0]:Array.from({length:K},(_,k)=>k*2*Math.PI/K);
+    azs.forEach((phi,ai)=>{
+      const cph=Math.cos(phi),sph=Math.sin(phi);
+      const pts=sub.map(p=>P(p[1]*cph,p[1]*sph,p[0]));
+      let d=0;pts.forEach(q=>d+=q[2]);
+      items.push({pts,depth:d/pts.length,chunks:cols,CH,w:1.1,fline:true});
+      for(let c=0;c<2;c++){
+        const ph=((T/7)+c/2+li*0.137+ai*0.05)%1,head=Math.floor(ph*(nS-1)),tail=Math.max(0,head-6);
+        const seg=pts.slice(tail,head+1);if(seg.length<2)continue;
+        const base=ramp(RAMP,tOf(sub[head][2],R.Bc));
+        items.push({pts:seg,depth:pts[head][2],col:base.map(v=>(v*0.45+140)|0),w:2,comet:true});
+      }
+    });
+  });
+
+  let dmin=1e9,dmax=-1e9;
+  items.forEach(it=>{dmin=Math.min(dmin,it.depth);dmax=Math.max(dmax,it.depth);});
+  items.sort((a,b)=>b.depth-a.depth);
+  // axis
+  const a1=P(0,0,-g.Zh*0.95),a2=P(0,0,g.Zh*0.95);
+  ctx.strokeStyle="rgba(160,180,230,.28)";ctx.setLineDash([6,6]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(a1[0],a1[1]);ctx.lineTo(a2[0],a2[1]);ctx.stroke();ctx.setLineDash([]);
+
+  ctx.lineJoin="round";ctx.lineCap="round";
+  items.forEach(it=>{
+    const t=dmax>dmin?1-(it.depth-dmin)/(dmax-dmin):1;
+    if(it.dot){
+      ctx.globalCompositeOperation="lighter";
+      const r=it.r*(0.7+0.5*t);
+      ctx.fillStyle=`rgba(${it.col[0]},${it.col[1]},${it.col[2]},${0.07+0.08*t})`;
+      ctx.beginPath();ctx.arc(it.x,it.y,r*2,0,7);ctx.fill();
+      ctx.fillStyle=`rgba(230,255,255,${0.55+0.45*t})`;
+      ctx.beginPath();ctx.arc(it.x,it.y,r*0.8,0,7);ctx.fill();
+    }else if(it.fline){
+      ctx.globalCompositeOperation="source-over";
+      const al=0.22+0.38*t,p=it.pts,n=p.length;
+      ctx.lineWidth=it.w;
+      for(let c=0,ci=0;c<n-1;c+=it.CH,ci++){
+        ctx.strokeStyle=`rgba(${it.chunks[ci]},${al})`;
+        ctx.beginPath();ctx.moveTo(p[c][0],p[c][1]);
+        const e=Math.min(c+it.CH,n-1);for(let k=c+1;k<=e;k++)ctx.lineTo(p[k][0],p[k][1]);
+        ctx.stroke();
+      }
+    }else if(it.comet){
+      ctx.globalCompositeOperation="lighter";
+      ctx.strokeStyle=`rgba(${it.col[0]},${it.col[1]},${it.col[2]},${0.4+0.45*t})`;ctx.lineWidth=it.w;
+      ctx.beginPath();it.pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
+      const h=it.pts[it.pts.length-1];
+      ctx.fillStyle=`rgba(255,255,255,${0.6+0.4*t})`;ctx.beginPath();ctx.arc(h[0],h[1],1.8,0,7);ctx.fill();
+    }else{
+      ctx.globalCompositeOperation="source-over";
+      ctx.strokeStyle=`rgba(${it.col[0]},${it.col[1]},${it.col[2]},${0.45+0.55*t})`;ctx.lineWidth=it.w*(0.8+0.3*t);
+      ctx.beginPath();it.pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
+    }
+  });
+  ctx.globalCompositeOperation="source-over";
+
+  // big B-direction arrow along the axis (inside the coil)
+  const bs=P(0,0,-S.dir*g.L*0.38),be=P(0,0,S.dir*g.L*0.38);
+  ctx.strokeStyle="rgba(255,90,140,.75)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(bs[0],bs[1]);ctx.lineTo(be[0],be[1]);ctx.stroke();
+  arrow(ctx,be[0],be[1],be[0]-bs[0],be[1]-bs[1],8,"rgb(255,90,140)");
+  pill(ctx,(bs[0]+be[0])/2,(bs[1]+be[1])/2-16,"B","rgba(255,90,140,.8)");
+
+  // N/S badges
+  const nEnd=S.dir>0?1:-1;
+  for(const e of [1,-1]){
+    const q=P(0,0,e*(g.L/2+g.Zh*0.1)),isN=e===nEnd;
+    ctx.fillStyle=isN?"#ef4444":"#3b82f6";ctx.beginPath();ctx.arc(q[0],q[1],12,0,7);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="700 12px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(isN?"N":"S",q[0],q[1]+.5);
+  }
+  pill(ctx,70,H-18,`B centre = ${fmtB(R.Bc)}`,"#22d3ee");
+  pill(ctx,W-100,H-18,`B end = ${fmtB(R.Be)}`,"#f472b6");
+  pill(ctx,10,18,`● current I = ${S.I} A (${S.dir>0?"CCW":"CW"} from +z end)`,"rgba(110,240,255,.7)","left");
+}
+
+function render(){ render3D(); render2D(); }
+
+/* ---------------- charts ---------------- */
+function niceTicks(lo,hi,n=5){
+  const span=hi-lo||1,raw=span/n,pw=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/pw;
+  const step=(f<1.5?1:f<3?2:f<7?5:10)*pw,out=[];
+  for(let v=Math.ceil(lo/step)*step;v<=hi+1e-12;v+=step)out.push(+v.toPrecision(12));
+  return out;
+}
+function drawChart(cvs,o){
+  const dpr=window.devicePixelRatio||1,w=cvs.clientWidth,h=cvs.clientHeight;
+  cvs.width=w*dpr;cvs.height=h*dpr;
+  const c=cvs.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+  const m={l:56,r:14,t:16,b:42},pw=w-m.l-m.r,ph=h-m.t-m.b;
+  const xmin=o.xs[0],xmax=o.xs[o.xs.length-1];
+  let ymax=0;o.series.forEach(s=>s.ys.forEach(v=>{if(v>ymax)ymax=v;}));ymax*=1.18;if(ymax<=0)ymax=1;
+  const X=x=>m.l+(x-xmin)/(xmax-xmin)*pw,Y=y=>m.t+ph-y/ymax*ph;
+  c.font="11px ui-monospace,Consolas,monospace";c.lineWidth=1;
+  niceTicks(0,ymax,5).forEach(t=>{
+    c.strokeStyle="rgba(120,140,190,.18)";c.beginPath();c.moveTo(m.l,Y(t));c.lineTo(w-m.r,Y(t));c.stroke();
+    c.fillStyle="#8fa0c9";c.textAlign="right";c.textBaseline="middle";c.fillText(+t.toPrecision(3),m.l-6,Y(t));
+  });
+  niceTicks(xmin,xmax,6).forEach(t=>{
+    c.strokeStyle="rgba(120,140,190,.12)";c.beginPath();c.moveTo(X(t),m.t);c.lineTo(X(t),m.t+ph);c.stroke();
+    c.fillStyle="#8fa0c9";c.textAlign="center";c.textBaseline="top";c.fillText(+t.toPrecision(3),X(t),m.t+ph+5);
+  });
+  c.strokeStyle="#3a4a7a";c.beginPath();c.moveTo(m.l,m.t);c.lineTo(m.l,m.t+ph);c.lineTo(w-m.r,m.t+ph);c.stroke();
+  c.fillStyle="#b9c6ee";c.font="12px system-ui";c.textAlign="center";c.fillText(o.xlabel,m.l+pw/2,h-6);
+  c.save();c.translate(13,m.t+ph/2);c.rotate(-Math.PI/2);c.fillText(o.ylabel,0,0);c.restore();
+  (o.vlines||[]).forEach(v=>{
+    c.strokeStyle=v.color;c.setLineDash([5,5]);c.beginPath();c.moveTo(X(v.x),m.t);c.lineTo(X(v.x),m.t+ph);c.stroke();c.setLineDash([]);
+    c.fillStyle=v.color;c.font="11px system-ui";c.textAlign="center";c.textBaseline="top";c.fillText(v.label,X(v.x),m.t+2);
+  });
+  o.series.forEach(s=>{
+    c.strokeStyle=s.color;c.lineWidth=s.w||2.2;c.setLineDash(s.dash||[]);
+    c.beginPath();o.xs.forEach((x,i)=>i?c.lineTo(X(x),Y(s.ys[i])):c.moveTo(X(x),Y(s.ys[i])));c.stroke();c.setLineDash([]);
+  });
+  (o.points||[]).forEach(p=>{
+    c.fillStyle=p.color;c.beginPath();c.arc(X(p.x),Y(p.y),5,0,7);c.fill();
+    c.strokeStyle="#fff";c.lineWidth=1.2;c.stroke();
+    c.font="600 11px ui-monospace,Consolas,monospace";c.textAlign=p.al||"left";c.textBaseline="bottom";c.fillStyle="#fff";
+    c.fillText(p.label,X(p.x)+(p.al==="right"?-8:8),Y(p.y)-6);
+  });
+  // legend
+  let lx=m.l+10,ly=m.t+ph-10-(o.series.length-1)*16;
+  c.font="11.5px system-ui";c.textAlign="left";c.textBaseline="middle";
+  o.series.forEach((s,i)=>{
+    c.strokeStyle=s.color;c.lineWidth=2.5;c.setLineDash(s.dash||[]);c.beginPath();c.moveTo(lx,ly+i*16);c.lineTo(lx+22,ly+i*16);c.stroke();c.setLineDash([]);
+    c.fillStyle="#cfd9ff";c.fillText(s.label,lx+28,ly+i*16);
+  });
+}
+function charts(){
+  const g=geo(),R=results(),un=pickUnit(R.Bid>R.Bc?R.Bid:R.Bc);
+  // chart 1: axis
+  const Zc=g.L/2+Math.max(3*g.R,0.5*g.L),n=240,xs=[],ys=[];
+  for(let i=0;i<=n;i++){const z=-Zc+2*Zc*i/n;xs.push(z*100);ys.push(Math.abs(axisB(z))*un.f);}
+  drawChart($("ch1"),{xs,xlabel:"position along axis z (cm)",ylabel:`|B| (${un.u})`,
+    series:[{ys,color:"#22d3ee",label:"Finite solenoid (exact)"},
+            {ys:xs.map(()=>R.Bid*un.f),color:"#fbbf24",dash:[6,5],w:1.6,label:"Ideal μ₀nI (infinite)"}],
+    vlines:[{x:-S.L/2,label:"end",color:"rgba(244,114,182,.8)"},{x:S.L/2,label:"end",color:"rgba(244,114,182,.8)"}],
+    points:[{x:0,y:R.Bc*un.f,color:"#22d3ee",label:"Centre "+(R.Bc*un.f).toPrecision(3)},
+            {x:S.L/2,y:R.Be*un.f,color:"#f472b6",label:"End "+(R.Be*un.f).toPrecision(3),al:"left"}]});
+  // chart 2: radial inside the coil
+  const lp=buildLoops(60),xs2=[],c0=[],c1=[],NP=70;
+  for(let i=0;i<=NP;i++){const r=g.R*0.9*i/NP;xs2.push(r*100);
+    c0.push(Math.abs(solB(r,0,lp)[1])*un.f);c1.push(Math.abs(solB(r,g.L/2,lp)[1])*un.f);}
+  drawChart($("ch2"),{xs:xs2,xlabel:"distance from axis ρ (cm)",ylabel:`|Bz| (${un.u})`,
+    series:[{ys:c0,color:"#22d3ee",label:"Centre plane (z = 0)"},{ys:c1,color:"#f472b6",label:"End plane (z = L/2)"}]});
+}
+
+/* ---------------- text panels ---------------- */
+function kpis(){
+  const r=results(),k=[
+    ["B at centre",fmtB(r.Bc),"z = 0, on axis","#22d3ee"],
+    ["B at end",fmtB(r.Be),`${(100*r.Be/r.Bc).toFixed(1)} % of centre`,"#f472b6"],
+    ["Ideal  μ₀nI",fmtB(r.Bid),"infinite-length limit","#fbbf24"],
+    ["Ampere-turns",(S.N*S.I).toFixed(0)+" A·t","N × I","#8b5cf6"],
+    ["Turn density n",r.n.toFixed(0)+" /m","N / L","#34d399"],
+    ["Length / Diameter",r.LD.toFixed(2),r.LD>=10?"long coil":r.LD>=3?"moderate":"short coil","#fb7185"],
+    ["Inductance (approx.)",(r.Lind*1e3).toPrecision(3)+" mH","μ₀μr N² A / L","#38bdf8"],
+    ["Stored energy",(r.U*1e3).toPrecision(3)+" mJ","½ L I²","#a3e635"]];
+  $("kpis").innerHTML=k.map(x=>`<div class="kpi" style="--c:${x[3]}"><small>${x[0]}</small><b>${x[1]}</b><span>${x[2]}</span></div>`).join("");
+}
+function formulas(){
+  const r=results(),L=r.L,R=r.R,mu=S.mu!==1?` × ${S.mu}`:"";
+  const s=(v)=>Number(v.toPrecision(4));
+  $("formulas").innerHTML=`
+  <div class="eq"><small>Biot–Savart law</small>dB = (μ₀ / 4π) · I dl × r̂ / r²
+    <div class="sub">Each of the N loops is integrated; fields are added (superposition).</div></div>
+  <div class="eq"><small>Ideal (long) solenoid</small>B = μ₀ μr n I , n = N / L
+    <div class="sub">= ${MU0.toExponential(3)} × ${S.mu} × ${s(r.n)} × ${S.I} = <b>${fmtB(r.Bid)}</b></div></div>
+  <div class="eq"><small>Finite solenoid, on axis</small>B(z) = ½ μ₀ n I [ (z+L/2)/√((z+L/2)²+R²) − (z−L/2)/√((z−L/2)²+R²) ]</div>
+  <div class="eq"><small>At the centre (z = 0)</small>B<sub>c</sub> = μ₀ N I / √(L² + 4R²)
+    <div class="sub">= (${MU0.toExponential(3)} × ${S.N} × ${S.I}) / √(${s(L)}² + 4×${s(R)}²)${mu} = <b>${fmtB(r.Bc)}</b></div></div>
+  <div class="eq"><small>At the end (z = L/2)</small>B<sub>e</sub> = ½ μ₀ n I · L / √(L² + R²)
+    <div class="sub">= 0.5 × ${MU0.toExponential(3)} × ${s(r.n)} × ${S.I} × ${s(L)} / √(${s(L)}² + ${s(R)}²)${mu} = <b>${fmtB(r.Be)}</b></div></div>
+  <div class="eq"><small>Inductance &amp; energy (long coil approx.)</small>L = μ₀ μr N² A / ℓ , U = ½ L I²
+    <div class="sub">L = ${(r.Lind*1e3).toPrecision(3)} mH , U = ${(r.U*1e3).toPrecision(3)} mJ</div></div>`;
+}
+function ampere(){
+  const r=results(),Zi=40*(r.L/2+r.R),n=4000,h=2*Zi/n;
+  let sum=Math.abs(axisB(-Zi))+Math.abs(axisB(Zi));
+  for(let i=1;i<n;i++)sum+=Math.abs(axisB(-Zi+i*h))*(i%2?4:2);
+  const num=sum*h/3,th=S.mu*MU0*S.N*S.I,err=Math.abs(num-th)/th*100;
+  $("ampere").innerHTML=`
+  <div class="eq"><small>Ampère's circuital law</small>∮ B · dl = μ₀ I<sub>enclosed</sub> = μ₀ N I
+    <div class="sub">Integrating the on-axis field along the whole axis must give μ₀ N I.</div></div>
+  <div class="eq"><small>Numerical result (Simpson, ±${(Zi*100).toFixed(0)} cm)</small>
+    <div class="sub">∫ B dz = <b>${num.toExponential(4)}</b> T·m<br>μ₀ μr N I = <b>${th.toExponential(4)}</b> T·m<br>
+    Difference = <b class="${err<0.5?"ok":"warn"}">${err.toFixed(4)} %</b> ${err<0.5?"✔ law verified":""}</div></div>`;
+}
+function insight(){
+  const r=results(),ratio=r.Be/r.Bc,dev=(1-r.Bc/r.Bid)*100,L=[];
+  if(r.LD>=10)L.push(["🟢",`<b>Long solenoid</b> (L/D = ${r.LD.toFixed(1)}). Field inside is almost uniform and the ideal formula μ₀nI is accurate (centre deviates only ${dev.toFixed(2)} %).`]);
+  else if(r.LD>=3)L.push(["🟡",`<b>Moderate length</b> (L/D = ${r.LD.toFixed(1)}). The centre field is ${dev.toFixed(1)} % below the ideal μ₀nI because of end effects.`]);
+  else L.push(["🔴",`<b>Short / wide coil</b> (L/D = ${r.LD.toFixed(2)}). It behaves more like a thick loop: the field is not uniform and the centre is ${dev.toFixed(1)} % below μ₀nI.`]);
+  L.push(["📐",`End field = <b>${(ratio*100).toFixed(1)} %</b> of the centre field. For a very long solenoid theory predicts 50 %; the longer the coil, the closer to 50 %.`]);
+  L.push(["🧲",`By the right-hand rule the field inside points towards the <b>${S.dir>0?"+z (right)":"−z (left)"}</b> end, which is the <b>North</b> pole.`]);
+  L.push(["⚡",`B ∝ N·I. Doubling the current (or turns) doubles B; halving the length L also raises n = N/L. Present: N·I = ${(S.N*S.I).toFixed(0)} A·turns.`]);
+  if(S.mu>1)L.push(["🔩",`The core multiplies the field by about μr = ${S.mu} (idealised). Real cores saturate at ~1.5–2 T.`]);
+  if(S.I>12||(S.N*S.I>6000))L.push(["🔥",`High current / ampere-turns: in a real coil the wire would heat up (I²R loss). Choose thicker wire or add cooling.`]);
+  $("insight").innerHTML=L.map(x=>`<li>${x[0]} ${x[1]}</li>`).join("");
+}
+function tables(){
+  const r=results();
+  $("cmp").innerHTML=`
+  <tr><th>Quantity</th><th>Centre (z = 0)</th><th>End (z = L/2)</th><th>Ideal infinite</th></tr>
+  <tr><td>Flux density B</td><td class="m">${fmtB(r.Bc)}</td><td class="m">${fmtB(r.Be)}</td><td class="m">${fmtB(r.Bid)}</td></tr>
+  <tr><td>Relative to centre</td><td class="m">100 %</td><td class="m">${(100*r.Be/r.Bc).toFixed(2)} %</td><td class="m">${(100*r.Bid/r.Bc).toFixed(2)} %</td></tr>
+  <tr><td>Relative to ideal μ₀nI</td><td class="m">${(100*r.Bc/r.Bid).toFixed(2)} %</td><td class="m">${(100*r.Be/r.Bid).toFixed(2)} %</td><td class="m">100 %</td></tr>
+  <tr><td>Magnetic field H = B/(μ₀μr)</td><td class="m">${(r.Bc/(MU0*S.mu)).toFixed(1)} A/m</td><td class="m">${(r.Be/(MU0*S.mu)).toFixed(1)} A/m</td><td class="m">${(r.Bid/(MU0*S.mu)).toFixed(1)} A/m</td></tr>
+  <tr><td>Formula</td><td class="m">μ₀NI/√(L²+4R²)</td><td class="m">½μ₀nI·L/√(L²+R²)</td><td class="m">μ₀nI</td></tr>`;
+  $("log").innerHTML=`<tr><th>#</th><th>I (A)</th><th>N</th><th>L (cm)</th><th>R (cm)</th><th>μr</th><th>B centre</th><th>B end</th><th>End/Centre</th></tr>`+
+    (snaps.length?snaps.map((s,i)=>`<tr><td>${i+1}</td><td class="m">${s.I}</td><td class="m">${s.N}</td><td class="m">${s.L}</td><td class="m">${s.R}</td><td class="m">${s.mu}</td><td class="m">${fmtB(s.Bc)}</td><td class="m">${fmtB(s.Be)}</td><td class="m">${(100*s.Be/s.Bc).toFixed(1)} %</td></tr>`).join("")
+      :`<tr><td colspan="9" style="color:var(--mut)">Change parameters and press “Save snapshot” to compare runs here.</td></tr>`);
+}
+
+/* ---------------- update loop ---------------- */
+let pending=false;
+function sched(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;update();});}
+function update(){
+  loops=buildLoops(36);
+  computeLines();computeHeat();
+  render();kpis();charts();formulas();ampere();insight();tables();
+}
+
+/* ---------------- controls ---------------- */
+const CTRL=[
+ {k:"I",label:"Current  I",unit:"A",min:0.1,max:20,step:0.1},
+ {k:"N",label:"Number of turns  N",unit:"turns",min:10,max:1000,step:1},
+ {k:"L",label:"Coil length  L",unit:"cm",min:2,max:80,step:0.5},
+ {k:"R",label:"Coil radius  R",unit:"cm",min:0.5,max:20,step:0.1}];
+const refs={};
+CTRL.forEach(c=>{
+  const d=document.createElement("div");d.className="ctrl";
+  d.innerHTML=`<div class="crow"><label>${c.label}</label><span class="num"><input type="number" min="${c.min}" max="${c.max}" step="${c.step}"><em>${c.unit}</em></span></div>
+  <input type="range" min="${c.min}" max="${c.max}" step="${c.step}">`;
+  $("ctl").appendChild(d);
+  const n=d.querySelector("input[type=number]"),r=d.querySelector("input[type=range]");
+  refs[c.k]={n,r};
+  r.oninput=()=>{S[c.k]=+r.value;n.value=r.value;sched();};
+  n.onchange=()=>{const v=clamp(+n.value||c.min,c.min,c.max);S[c.k]=v;n.value=v;r.value=v;sched();};
+});
+function syncCtl(){CTRL.forEach(c=>{refs[c.k].n.value=S[c.k];refs[c.k].r.value=S[c.k];});$("core").value=S.mu;setDir(S.dir,true);}
+function setDir(d,silent){S.dir=d;$("dirP").classList.toggle("on",d>0);$("dirN").classList.toggle("on",d<0);if(!silent)sched();}
+$("dirP").onclick=()=>setDir(1);$("dirN").onclick=()=>setDir(-1);
+$("core").onchange=e=>{S.mu=+e.target.value;sched();};
+const PRE={long:{I:5,N:600,L:60,R:2},short:{I:5,N:100,L:5,R:4},wide:{I:5,N:60,L:3,R:15},strong:{I:15,N:800,L:30,R:3},reset:DEF};
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{Object.assign(S,DEF,PRE[b.dataset.p]);syncCtl();sched();});
+$("heat").onclick=e=>{showHeat=!showHeat;e.target.classList.toggle("on",showHeat);computeHeat();render();};
+$("flow").onclick=e=>{flowOn=!flowOn;e.target.classList.toggle("on",flowOn);render3D();};
+$("auto").onclick=e=>{cam.auto=!cam.auto;e.target.classList.toggle("on",cam.auto);};
+function savePng(c,name){render();const a=document.createElement("a");a.download=name;a.href=c.toDataURL("image/png");a.click();}
+$("png3").onclick=()=>savePng(cv3,"solenoid_3d.png");
+$("png2").onclick=()=>savePng(cv2,"solenoid_2d.png");
+$("snap").onclick=()=>{const r=results();snaps.push({I:S.I,N:S.N,L:S.L,R:S.R,mu:S.mu,Bc:r.Bc,Be:r.Be});if(snaps.length>8)snaps.shift();tables();};
+$("clr").onclick=()=>{snaps=[];tables();};
+
+/* probe (2D) */
+cv2.addEventListener("mousemove",e=>{
+  const g=geo(),rc=cv2.getBoundingClientRect(),W=rc.width,sc=W/(2*g.Zh);
+  const z=(e.clientX-rc.left-W/2)/sc,rho=Math.abs((rc.height/2-(e.clientY-rc.top))/sc);
+  const b=solB(rho,z,loops),m=Math.hypot(b[0],b[1]);
+  $("probe").textContent=`z = ${(z*100).toFixed(1)} cm   ρ = ${(rho*100).toFixed(1)} cm   |B| = ${fmtB(m)}`;
+});
+cv2.addEventListener("mouseleave",()=>{$("probe").textContent="Hover to probe the field";});
+/* 3D drag / zoom */
+let drag=false,lx=0,ly=0;
+cv3.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;cv3.style.cursor="grabbing";cv3.setPointerCapture(e.pointerId);});
+cv3.addEventListener("pointermove",e=>{if(!drag)return;cam.yaw+=(e.clientX-lx)*0.01;cam.pitch=clamp(cam.pitch+(e.clientY-ly)*0.01,-1.5,1.5);lx=e.clientX;ly=e.clientY;render3D();});
+cv3.addEventListener("pointerup",()=>{drag=false;cv3.style.cursor="grab";});
+cv3.addEventListener("wheel",e=>{e.preventDefault();cam.zoom=clamp(cam.zoom*(e.deltaY<0?1.08:0.92),0.4,3);render3D();},{passive:false});
+function tick(now){
+  const dt=Math.min(0.05,(now-lastT)/1000||0);lastT=now;
+  if(flowOn)tAnim+=dt;
+  if(cam.auto&&!drag)cam.yaw+=0.006*dt*60;
+  if((flowOn||cam.auto)&&!drag)render3D();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+new ResizeObserver(()=>{render();charts();}).observe(document.querySelector(".stage"));
+window.addEventListener("resize",()=>charts());
+
+syncCtl();update();
+})();
+</script>
+</body>
+</html>
