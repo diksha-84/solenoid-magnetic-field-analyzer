@@ -3,6 +3,8 @@
 EME project (Unit 2 – Q3) by Diksha Sukhadeve, Roll no: 67, TY ENTC B.
 
 🔗 **Live demo:** [https://<username>.github.io/solenoid-magnetic-field-analyzer/](https://github.com/diksha-84/solenoid-magnetic-field-analyzer)
+
+Website for simulation:
 https://solenoid3dmodel.netlify.app/ 
 
 ## What it does
